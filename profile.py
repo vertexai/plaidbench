@@ -69,7 +69,6 @@ def main():
     parser.add_argument('--callgrind', action='store_true')
     parser.add_argument('module')
     args, remain = parser.parse_known_args()
-    print(args, remain)
 
     if args.plaid:
         import plaidml.keras
@@ -108,7 +107,6 @@ def main():
     try:
         sys.argc = len(remain) + 1
         sys.argv[1:] = remain
-        print(sys.argv)
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         execfile(module, globals)
