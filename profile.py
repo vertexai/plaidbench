@@ -23,9 +23,6 @@ import os
 import sys
 import time
 
-# cifar10 data is too small, but we can upscale
-from keras.datasets import cifar10
-
 class StopWatch(object):
     def __init__(self, use_callgrind):
         self.__start = None
@@ -83,8 +80,9 @@ def main():
         from keras.backend.common import set_floatx
         set_floatx('float16')
 
-
     # Load the dataset and scrap everything but the training images
+    # cifar10 data is too small, but we can upscale
+    from keras.datasets import cifar10
     print("Loading the data")
     (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
     y_train_cats = None
