@@ -297,25 +297,6 @@ def preprocess_input(x):
     x *= 2.
     return x
 
-
-# cifar10 data is too small, but we can upscale and crop to 199x199
-from keras.datasets import cifar10
-
-# Load the dataset
-print("Loading the data")
-(x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
-
-# Get rid of all the data except the training images (for now
-y_train_cats = None
-x_test = None
-y_test_cats = None
-
-# Set a batch size
-batch_size = 1
-
-# truncate number of images
-x_train = x_train[:batch_size]
-
 # Upscale image size by a factor of 10
 print("Upscaling the data")
 x_train = np.repeat(np.repeat(x_train, 10, axis=1), 10, axis=2)

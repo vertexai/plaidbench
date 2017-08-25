@@ -23,6 +23,8 @@ import os
 import sys
 import time
 
+# cifar10 data is too small, but we can upscale
+from keras.datasets import cifar10
 
 class StopWatch(object):
     def __init__(self, use_callgrind):
@@ -63,7 +65,7 @@ class Output(object):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--plaid')
+    parser.add_argument('--plaid', action='store_true')
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/result.json')
@@ -77,12 +79,20 @@ def main():
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
         plaidml.keras.install_backend()
-        import plaidml.keras.backend
-        with open(args.plaid, 'r') as file_:
-            plaidml.keras.backend.set_config(file_.read())
-        if args.fp16:
-            from keras.backend.common import set_floatx
-            set_floatx('float16')
+    if args.fp16:
+        from keras.backend.common import set_floatx
+        set_floatx('float16')
+
+
+    # Load the dataset and scrap everything but the training images
+    print("Loading the data")
+    (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
+    y_train_cats = None
+    x_test = None
+    y_test_cats = None
+    # Set a batch size and truncate the number of images
+    batch_size = 1
+    x_train = x_train[:batch_size]
 
     stop_watch = StopWatch(args.callgrind)
     output = Output()
@@ -90,6 +100,8 @@ def main():
         '__name__': '__main__',
         'stop_watch': stop_watch,
         'output': output,
+        'x_train': x_train,
+        'batch_size': batch_size,
     }
     data = {
         'example': args.module

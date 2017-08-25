@@ -23,27 +23,8 @@ import random
 # Import the apps
 import keras.applications as kapp
 
-# cifar10 data is 1/7th the size vgg19 needs in the spatial dimensions,
-# but if we upscale we can use it
-from keras.datasets import cifar10
-
 from keras.layers import Input
 from keras.backend.common import floatx
-
-# Load the dataset
-print("Loading the data")
-(x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
-
-# Get rid of all the data except the training images (for now
-y_train_cats = None
-x_test = None
-y_test_cats = None
-
-# Set a batch size
-batch_size = 1
-
-# truncate number of images
-x_train = x_train[:batch_size]
 
 # Upscale image size by a factor of 7
 print("Upscaling the data")
