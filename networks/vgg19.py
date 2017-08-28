@@ -14,45 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+def scale_dataset(x_train):
+    import numpy as np
+    return np.repeat(np.repeat(x_train, 7, axis=1), 7, axis=2)
 
-import numpy as np
-import time
-import random
-
-# Import the apps
-import keras.applications as kapp
-
-from keras.layers import Input
-from keras.backend.common import floatx
-
-# Upscale image size by a factor of 7
-print("Upscaling the data")
-x_train = np.repeat(np.repeat(x_train, 7, axis=1), 7, axis=2)
-
-# Load the model
-print("Loading the model")
-inputLayer = Input(shape=(224, 224, 3), dtype=floatx())
-model = kapp.VGG19(input_tensor=inputLayer)
-
-# Prep the model and run an initial un-timed batch
-print("Compiling")
-model.compile(optimizer='sgd', loss='categorical_crossentropy',
-              metrics=['accuracy'])
-
-print("Running initial batch")
-y = model.predict(x=x_train, batch_size=batch_size)
-output.contents = y
-
-print("Warmup")
-for i in range(10):
-    stop_watch.start()
-
-# Now start the clock and run 100 batches
-print("Doing the main timing")
-for i in range(1000):
-    stop_watch.start()
-    y = model.predict(x=x_train, batch_size=batch_size)
-    stop_watch.stop()
-    time.sleep(.025 * random.random())
+def build_model():
+    import keras.applications as kapp
+    from keras.layers import Input
+    from keras.backend.common import floatx
+    inputLayer = Input(shape=(224, 224, 3), dtype=floatx())
+    return kapp.VGG19(input_tensor=inputLayer)
 

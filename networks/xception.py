@@ -81,10 +81,15 @@ from keras.applications.imagenet_utils import _obtain_input_shape
 TF_WEIGHTS_PATH = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.4/xception_weights_tf_dim_ordering_tf_kernels.h5'
 TF_WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.4/xception_weights_tf_dim_ordering_tf_kernels_notop.h5'
 
+def scale_dataset(x_train):
+    # Upscale image size by a factor of 10
+    x_train = np.repeat(np.repeat(x_train, 10, axis=1), 10, axis=2)
+    # Crop the images to 199 x 199 and normalize
+    return (x_train[:, 10:10+299, 10:10+299])/255.
 
 # This is nearly a straight copy of Keras Xception, except I took out an if
 # clause `if K.backend() != 'tensorflow'` that raised an error.
-def custom_Xception(include_top=True, weights='imagenet',
+def build_model(include_top=True, weights='imagenet',
              input_tensor=None, input_shape=None,
              pooling=None,
              classes=1000):
@@ -290,42 +295,9 @@ def custom_Xception(include_top=True, weights='imagenet',
         K.set_image_data_format(old_data_format)
     return model
 
-
 def preprocess_input(x):
     x /= 255.
     x -= 0.5
     x *= 2.
     return x
-
-# Upscale image size by a factor of 10
-print("Upscaling the data")
-x_train = np.repeat(np.repeat(x_train, 10, axis=1), 10, axis=2)
-
-# Crop the images to 199 x 199 and normalize
-x_train = (x_train[:, 10:10+299, 10:10+299])/255.
-
-# Load the model
-print("Loading the model")
-model = custom_Xception()
-
-# Prep the model and run an initial un-timed batch
-print("Compiling")
-model.compile(optimizer='sgd', loss='categorical_crossentropy',
-              metrics=['accuracy'])
-
-print("Running initial batch")
-y = model.predict(x=x_train, batch_size=batch_size)
-output.contents = y
-
-print("Warmup")
-for i in range(10):
-    stop_watch.start()
-
-# Now start the clock and run 100 batches
-print("Doing the main timing")
-for i in range(1000):
-    stop_watch.start()
-    y = model.predict(x=x_train, batch_size=batch_size)
-    stop_watch.stop()
-    time.sleep(.025 * random.random())
 

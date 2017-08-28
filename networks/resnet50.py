@@ -14,50 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+def scale_dataset(x_train):
+    import numpy as np
+    # cifar10 data is only 32x32 pixels, so we must upsample by a factor of 7
+    # to produce the 224x224 images required by resnet.
+    return np.repeat(np.repeat(x_train, 7, axis=1), 7, axis=2)
 
-import numpy as np
-import os
-import argparse
-import json
-import random
-import sys
-import time
-
-# Import the apps
-import keras.applications as kapp
-
-# Import the sample dataset
-from keras.backend.common import floatx
-from keras.layers import Input
-
-# cifar10 data is only 32x32 pixels, so we must upsample by a factor of 7
-# to produce the 224x224 images required by resnet.
-print("Upscaling the data")
-x_train = np.repeat(np.repeat(x_train, 7, axis=1), 7, axis=2)
-
-# Load the model
-print("Loading the model")
-inputLayer = Input(shape=(224, 224, 3), dtype=floatx())
-model = kapp.ResNet50(input_tensor=inputLayer)
-
-#Prep the model and run an inital untimed batch
-print("Compiling")
-model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
-
-print("Running initial batch")
-y = model.predict(x=x_train, batch_size=batch_size)
-output.contents = y
-
-print("Warmup")
-for i in range(10):
-    stop_watch.start()
-
-#Now start the clock and run 100 batches
-print("Doing the main timing")
-for i in range(1000):
-    stop_watch.start()
-    y = model.predict(x=x_train, batch_size=batch_size)
-    stop_watch.stop()
-    time.sleep(.025 * random.random())
+def build_model():
+    import keras.applications as kapp
+    from keras.backend.common import floatx
+    from keras.layers import Input
+    inputLayer = Input(shape=(224, 224, 3), dtype=floatx())
+    return kapp.ResNet50(input_tensor=inputLayer)
 

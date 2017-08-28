@@ -22,6 +22,7 @@ import numpy as np
 import os
 import sys
 import time
+import random
 
 class StopWatch(object):
     def __init__(self, use_callgrind):
@@ -110,6 +111,34 @@ def main():
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         execfile(module, globals)
+
+        print("Upscaling the data")
+        x_train = globals['scale_dataset'](x_train)
+
+        print("Loading the model")
+        model = globals['build_model']()
+
+        # Prep the model and run an initial un-timed batch
+        print("Compiling")
+        model.compile(optimizer='sgd', loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+
+        print("Running initial batch")
+        y = model.predict(x=x_train, batch_size=batch_size)
+        output.contents = y
+
+        print("Warmup")
+        for i in range(10):
+            stop_watch.start()
+
+        # Now start the clock and run 100 batches
+        print("Doing the main timing")
+        for i in range(1000):
+            stop_watch.start()
+            y = model.predict(x=x_train, batch_size=batch_size)
+            stop_watch.stop()
+            time.sleep(.025 * random.random())
+
         stop_watch.stop()
         elapsed = stop_watch.elapsed()
         data['elapsed'] = elapsed
