@@ -94,13 +94,6 @@ def main():
 
     stop_watch = StopWatch(args.callgrind)
     output = Output()
-    globals = {
-        '__name__': '__main__',
-        'stop_watch': stop_watch,
-        'output': output,
-        'x_train': x_train,
-        'batch_size': batch_size,
-    }
     data = {
         'example': args.module
     }
@@ -110,6 +103,7 @@ def main():
         sys.argv[1:] = remain
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
+        globals = {}
         execfile(module, globals)
 
         print("Upscaling the data")
