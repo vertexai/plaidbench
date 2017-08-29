@@ -123,11 +123,11 @@ def main():
 
         print("Warmup")
         for i in range(10):
-            stop_watch.start()
+            y = model.predict(x=x_train, batch_size=batch_size)
 
         # Now start the clock and run 100 batches
         print("Doing the main timing")
-        for i in range(1000):
+        for i in range(1024):
             stop_watch.start()
             y = model.predict(x=x_train, batch_size=batch_size)
             stop_watch.stop()
