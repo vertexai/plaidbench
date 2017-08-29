@@ -162,10 +162,10 @@ def build_model(include_top=True, weights='imagenet',
 
     # Determine proper input shape
     input_shape = _obtain_input_shape(input_shape,
-                                      default_size=299,
-                                      min_size=71,
-                                      data_format=K.image_data_format(),
-                                      require_flatten=include_top)
+                                      299,  #default_size
+                                      71,   #min_size
+                                      K.image_data_format(),  #data_format
+                                      include_top) #require_flatten/include_top (depending on Keras version)
 
     if input_tensor is None:
         img_input = Input(shape=input_shape)
