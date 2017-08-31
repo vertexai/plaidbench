@@ -1,6 +1,6 @@
 # Keras application network benchmark
 Measure performance of the built-in Keras application networks Inception-V3,
-ResNet50, VGG19, and Xception.
+ResNet50, VGG19, Xception, and (in Keras 2.0.6 and later) MobileNet.
 
 To install:
 
@@ -16,6 +16,6 @@ Otherwise, you can also use the TensorFlow backend:
 
 To run a benchmark on a network:
 
-`python profile.py [--plaid] {inception_v3,resnet50,vgg19,xception}`
+`python profile.py [--plaid] {inception_v3,resnet50,vgg19,xception,mobilenet}`
 
 
