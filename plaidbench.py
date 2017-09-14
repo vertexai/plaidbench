@@ -93,6 +93,7 @@ def main():
         use_plaid = has_plaid()
 
     if use_plaid:
+        print("Using PlaidML backend.")
         import plaidml.keras
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
