@@ -16,8 +16,9 @@ Otherwise, you can also use the TensorFlow backend:
 
 To run a benchmark on a network:
 
-`python profile.py [--plaid] NETWORK`
+`python plaidbench.py [--plaid] [--train] NETWORK`
 
 where NETWORK is one of the names "inception_v3", "resnet50", "vgg16", "vgg19",
-"xception", or "mobilenet".
+"xception", or "mobilenet". Use --train if you want to train, otherwise the
+benchmark will run inference.
 
