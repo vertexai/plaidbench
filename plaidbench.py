@@ -60,10 +60,18 @@ class Output(object):
     self.contents = None
     self.precision = 'untested'
 
+def has_plaid():
+    try:
+        import plaidml.keras
+        return True
+    except ImportError:
+        return False
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--plaid', action='store_true')
+    parser.add_argument('--no-plaid', action='store_true')
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/result.json')
@@ -73,7 +81,18 @@ def main():
     parser.add_argument('module')
     args, remain = parser.parse_known_args()
 
-    if args.plaid:
+    use_plaid = None
+    if args.plaid and args.no_plaid:
+        print("Inconsistent arguments: --plaid conflicts with --no-plaid")
+        return
+    elif args.plaid:
+        use_plaid = True
+    elif args.no_plaid:
+        use_plaid = False
+    else:
+        use_plaid = has_plaid()
+
+    if use_plaid:
         import plaidml.keras
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
