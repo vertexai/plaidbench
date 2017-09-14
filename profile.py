@@ -68,6 +68,8 @@ def main():
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/result.json')
     parser.add_argument('--callgrind', action='store_true')
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--train', action='store_true')
     parser.add_argument('module')
     args, remain = parser.parse_known_args()
 
@@ -79,18 +81,26 @@ def main():
     if args.fp16:
         from keras.backend.common import set_floatx
         set_floatx('float16')
+    batch_size = int(args.batch_size)
+    truncation_size = 64 / batch_size
+    epoch_size = truncation_size * batch_size
 
     # Load the dataset and scrap everything but the training images
     # cifar10 data is too small, but we can upscale
     from keras.datasets import cifar10
     print("Loading the data")
     (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
-    y_train_cats = None
+
+    if args.train:
+        from keras.utils.np_utils import to_categorical
+        x_train = x_train[:epoch_size]
+        y_train_cats = y_train_cats[:epoch_size]
+        y_train = to_categorical(y_train_cats, num_classes=1000)
+    else:
+        x_train = x_train[:batch_size]
+        y_train_cats = None
     x_test = None
     y_test_cats = None
-    # Set a batch size and truncate the number of images
-    batch_size = 1
-    x_train = x_train[:batch_size]
 
     stop_watch = StopWatch(args.callgrind)
     output = Output()
@@ -114,24 +124,43 @@ def main():
 
         # Prep the model and run an initial un-timed batch
         print("Compiling")
-        model.compile(optimizer='sgd', loss='categorical_crossentropy',
+        optimizer = 'sgd'
+        if args.module[:3] == 'vgg':
+            from keras.optimizers import SGD
+            optimizer = SGD(lr=0.0001)
+        model.compile(optimizer=optimizer, loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-        print("Running initial batch")
-        y = model.predict(x=x_train, batch_size=batch_size)
-        output.contents = y
-
-        print("Warmup")
-        for i in range(10):
+        if args.train:
+            # training
+            print("Doing the main timing")
+            for i in range(30):
+                if i != 0:
+                    stop_watch.start()
+                x = x_train[(i*batch_size):((i+truncation_size)*batch_size)]
+                y = y_train[(i*batch_size):((i+truncation_size)*batch_size)]
+                history = model.fit(x=x, y=y, batch_size=batch_size, epochs=3,
+                        initial_epoch=i*3, shuffle=False)
+                if i != 0:
+                    stop_watch.stop()
+                time.sleep(.025 * random.random())
+                if i == 0:
+                    output.contents = history.history['loss']
+        else:
+            # inference
+            print("Running initial batch")
             y = model.predict(x=x_train, batch_size=batch_size)
-
-        # Now start the clock and run 100 batches
-        print("Doing the main timing")
-        for i in range(1024):
-            stop_watch.start()
-            y = model.predict(x=x_train, batch_size=batch_size)
-            stop_watch.stop()
-            time.sleep(.025 * random.random())
+            output.contents = y
+            print("Warmup")
+            for i in range(10):
+                y = model.predict(x=x_train, batch_size=batch_size)
+            # Now start the clock and run 100 batches
+            print("Doing the main timing")
+            for i in range(1024):
+                stop_watch.start()
+                y = model.predict(x=x_train, batch_size=batch_size)
+                stop_watch.stop()
+                time.sleep(.025 * random.random())
 
         stop_watch.stop()
         elapsed = stop_watch.elapsed()
