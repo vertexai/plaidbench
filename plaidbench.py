@@ -80,7 +80,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('module')
-    args, remain = parser.parse_known_args()
+    args = parser.parse_args()
 
     if args.plaid or (not args.no_plaid and has_plaid()):
         print("Using PlaidML backend.")
@@ -119,8 +119,6 @@ def main():
     }
     stop_watch.start_outer()
     try:
-        sys.argc = len(remain) + 1
-        sys.argv[1:] = remain
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         globals = {}
@@ -158,15 +156,15 @@ def main():
                     output.contents = history.history['loss']
         else:
             # inference
-            print("Running initial batch")
+            print("Running initial batch, batch_size={}".format(batch_size))
             y = model.predict(x=x_train, batch_size=batch_size)
             output.contents = y
             print("Warmup")
-            for i in range(10):
+            for i in range(32/batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print("Doing the main timing")
-            for i in range(1024):
+            for i in range(1024/batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
