@@ -17,12 +17,14 @@
 from __future__ import print_function
 
 import argparse
+import errno
 import json
 import numpy as np
 import os
 import sys
 import time
 import random
+
 
 class StopWatch(object):
     def __init__(self, use_callgrind):
@@ -60,6 +62,7 @@ class Output(object):
     self.contents = None
     self.precision = 'untested'
 
+
 def has_plaid():
     try:
         import plaidml.keras
@@ -75,10 +78,11 @@ def main():
     plaidargs.add_argument("--no-plaid", action="store_true")
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
-    parser.add_argument('--result', default='/tmp/result.json')
+    parser.add_argument('--result', default='/tmp/plaidbench_results')
     parser.add_argument('--callgrind', action='store_true')
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
+    parser.add_argument('--print-stacktraces', action='store_true')
     parser.add_argument('module')
     args = parser.parse_args()
 
@@ -131,7 +135,6 @@ def main():
         model = globals['build_model']()
 
         # Prep the model and run an initial un-timed batch
-        print("Compiling")
         optimizer = 'sgd'
         if args.module[:3] == 'vgg':
             from keras.optimizers import SGD
@@ -141,14 +144,15 @@ def main():
 
         if args.train:
             # training
-            print("Doing the main timing")
-            for i in range(30):
+            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            for i in range(10):
+                if i == 1:
+                  print("Doing the main timing")
                 if i != 0:
                     stop_watch.start()
-                x = x_train[(i*batch_size):((i+truncation_size)*batch_size)]
-                y = y_train[(i*batch_size):((i+truncation_size)*batch_size)]
-                history = model.fit(x=x, y=y, batch_size=batch_size, epochs=3,
-                        initial_epoch=i*3, shuffle=False)
+                x = x_train[:((truncation_size)*batch_size)]
+                y = y_train[:((truncation_size)*batch_size)]
+                history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
                 if i != 0:
                     stop_watch.stop()
                 time.sleep(.025 * random.random())
@@ -156,7 +160,7 @@ def main():
                     output.contents = history.history['loss']
         else:
             # inference
-            print("Running initial batch, batch_size={}".format(batch_size))
+            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
             y = model.predict(x=x_train, batch_size=batch_size)
             output.contents = y
             print("Warmup")
@@ -178,14 +182,20 @@ def main():
     except Exception as ex:
         print(ex)
         data['exception'] = str(ex)
-        raise
+        if args.print_stacktraces:
+            raise
+        print('Set --print-stacktraces to see the entire traceback')
     finally:
-        with open(args.result, 'w') as out:
+        try:
+            os.makedirs(args.result)
+        except OSError as ex:
+            if ex.errno != errno.EEXIST:
+                print(ex)
+                return
+        with open(os.path.join(args.result, 'result.json'), 'w') as out:
             json.dump(data, out)
         if isinstance(output.contents, np.ndarray):
-            # Horrible hack of filename choice (in expectation of rewrite)
-            np_out_filename = "".join(args.result.split(".")[:-1]) + ".npy"
-            np.save(np_out_filename, output.contents)
+            np.save(os.path.join(args.result, 'result.npy'), output.contents)
 
 
 if __name__ == '__main__':
