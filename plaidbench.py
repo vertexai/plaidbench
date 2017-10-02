@@ -70,12 +70,13 @@ def has_plaid():
     except ImportError:
         return False
 
+SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
     parser = argparse.ArgumentParser()
     plaidargs = parser.add_mutually_exclusive_group()
-    plaidargs.add_argument("--plaid", action="store_true")
-    plaidargs.add_argument("--no-plaid", action="store_true")
+    plaidargs.add_argument('--plaid', action='store_true')
+    plaidargs.add_argument('--no-plaid', action='store_true')
     parser.add_argument('--fp16', action='store_true')
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/plaidbench_results')
@@ -83,11 +84,11 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
-    parser.add_argument('module')
+    parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
     if args.plaid or (not args.no_plaid and has_plaid()):
-        print("Using PlaidML backend.")
+        print('Using PlaidML backend.')
         import plaidml.keras
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
@@ -102,7 +103,7 @@ def main():
     # Load the dataset and scrap everything but the training images
     # cifar10 data is too small, but we can upscale
     from keras.datasets import cifar10
-    print("Loading the data")
+    print('Loading the data')
     (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
 
     if args.train:
@@ -128,10 +129,10 @@ def main():
         globals = {}
         execfile(module, globals)
 
-        print("Upscaling the data")
+        print('Upscaling the data')
         x_train = globals['scale_dataset'](x_train)
 
-        print("Loading the model")
+        print('Loading the model')
         model = globals['build_model']()
 
         # Prep the model and run an initial un-timed batch
@@ -144,10 +145,10 @@ def main():
 
         if args.train:
             # training
-            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            print('Compiling / Running initial batch, batch_size={}'.format(batch_size))
             for i in range(10):
                 if i == 1:
-                  print("Doing the main timing")
+                  print('Doing the main timing')
                 if i != 0:
                     stop_watch.start()
                 x = x_train[:((truncation_size)*batch_size)]
@@ -160,14 +161,14 @@ def main():
                     output.contents = history.history['loss']
         else:
             # inference
-            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            print('Compiling / Running initial batch, batch_size={}'.format(batch_size))
             y = model.predict(x=x_train, batch_size=batch_size)
             output.contents = y
-            print("Warmup")
+            print('Warmup')
             for i in range(32/batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
-            print("Doing the main timing")
+            print('Doing the main timing')
             for i in range(1024/batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)

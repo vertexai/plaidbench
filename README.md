@@ -6,9 +6,7 @@ To install:
 
 `pip install -r requirements.txt`
 
-If you want to use the PlaidML backend, install it like so:
-
-`pip install plaidml-keras`
+If you want to use the PlaidML backend, install it from the binary pre-release.
 
 Otherwise, you can also use the TensorFlow backend:
 
