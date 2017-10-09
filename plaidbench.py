@@ -84,6 +84,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
@@ -118,11 +119,13 @@ def main():
     y_test_cats = None
 
     stop_watch = StopWatch(args.callgrind)
+    compile_stop_watch = StopWatch(args.callgrind)
     output = Output()
     data = {
         'example': args.module
     }
     stop_watch.start_outer()
+    compile_stop_watch.start_outer()
     try:
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
@@ -145,16 +148,20 @@ def main():
 
         if args.train:
             # training
-            print('Compiling / Running initial batch, batch_size={}'.format(batch_size))
-            for i in range(10):
+            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            for i in range(args.epochs):
                 if i == 1:
-                  print('Doing the main timing')
-                if i != 0:
+                    print('Doing the main timing')
+                if i == 0:
+                    compile_stop_watch.start()
+                else:
                     stop_watch.start()
                 x = x_train[:((truncation_size)*batch_size)]
                 y = y_train[:((truncation_size)*batch_size)]
                 history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
-                if i != 0:
+                if i == 0:
+                    compile_stop_watch.stop()
+                else:
                     stop_watch.stop()
                 time.sleep(.025 * random.random())
                 if i == 0:
@@ -166,7 +173,11 @@ def main():
             output.contents = y
             print('Warmup')
             for i in range(32/batch_size + 1):
+                if i == 0:
+                    compile_stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
+                if i == 0:
+                    compile_stop_watch.stop()
             # Now start the clock and run 100 batches
             print('Doing the main timing')
             for i in range(1024/batch_size):
@@ -176,9 +187,12 @@ def main():
                 time.sleep(.025 * random.random())
 
         stop_watch.stop()
-        elapsed = stop_watch.elapsed()
-        data['elapsed'] = elapsed
-        print('Example finished, elapsed: %s' % elapsed)
+        compile_stop_watch.stop()
+        execution_duration = stop_watch.elapsed()
+        compile_duration = compile_stop_watch.elapsed()
+        data['execution_duration'] = execution_duration
+        data['compile_duration'] = compile_duration
+        print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
         data['precision'] = output.precision
     except Exception as ex:
         print(ex)
