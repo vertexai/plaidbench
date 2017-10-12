@@ -6,7 +6,7 @@ load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 pkg_tar(
     name = "pkg",
-    files = glob(["**/*"]),
+    srcs = glob(["**/*"]),
     package_dir = "plaidbench",
     strip_prefix = ".",
 )
@@ -15,4 +15,16 @@ py_library(
     name = "plaidbench",
     srcs = ["plaidbench.py"],
     data = glob(["networks/**"]),
+)
+
+py_binary(
+    name = "benchbin",
+    srcs = [
+        "plaidbench.py",
+    ],
+    data = glob(["networks/**"]),
+    main = "plaidbench.py",
+    deps = [
+        "@vertexai_plaidml//plaidml/keras",
+    ],
 )
