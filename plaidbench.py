@@ -136,6 +136,7 @@ def main():
         x_train = globals['scale_dataset'](x_train)
 
         print('Loading the model')
+        compile_stop_watch.start()
         model = globals['build_model']()
 
         # Prep the model and run an initial un-timed batch
@@ -148,36 +149,30 @@ def main():
 
         if args.train:
             # training
+            x = x_train[:((truncation_size)*batch_size)]
+            y = y_train[:((truncation_size)*batch_size)]
             print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
+            compile_stop_watch.stop()
             for i in range(args.epochs):
                 if i == 1:
                     print('Doing the main timing')
-                if i == 0:
-                    compile_stop_watch.start()
-                else:
-                    stop_watch.start()
-                x = x_train[:((truncation_size)*batch_size)]
-                y = y_train[:((truncation_size)*batch_size)]
+                stop_watch.start()
                 history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
-                if i == 0:
-                    compile_stop_watch.stop()
-                else:
-                    stop_watch.stop()
+                stop_watch.stop()
                 time.sleep(.025 * random.random())
                 if i == 0:
-                    output.contents = history.history['loss']
+                    output.contents = [history.history['loss']]
+            output.contents = np.array(output.contents)
         else:
             # inference
             print('Compiling / Running initial batch, batch_size={}'.format(batch_size))
             y = model.predict(x=x_train, batch_size=batch_size)
+            compile_stop_watch.stop()
             output.contents = y
             print('Warmup')
             for i in range(32/batch_size + 1):
-                if i == 0:
-                    compile_stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
-                if i == 0:
-                    compile_stop_watch.stop()
             # Now start the clock and run 100 batches
             print('Doing the main timing')
             for i in range(1024/batch_size):
