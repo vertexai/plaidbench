@@ -112,7 +112,7 @@ def main():
         y_train_cats = y_train_cats[:epoch_size]
         y_train = to_categorical(y_train_cats, num_classes=1000)
     else:
-        x_train = np.zeros([batch_size, 32, 32, 3])
+        x_train = np.load('cifar16.npy').repeat(1 + batch_size/16, axis=0)[:batch_size]
         y_train_cats = None
 
     stop_watch = StopWatch(args.callgrind)
