@@ -112,7 +112,9 @@ def main():
         y_train_cats = y_train_cats[:epoch_size]
         y_train = to_categorical(y_train_cats, num_classes=1000)
     else:
-        x_train = np.load('cifar16.npy').repeat(1 + batch_size/16, axis=0)[:batch_size]
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        cifar_path = os.path.join(this_dir, 'cifar16.npy')
+        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
         y_train_cats = None
 
     stop_watch = StopWatch(args.callgrind)

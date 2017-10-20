@@ -14,7 +14,10 @@ pkg_tar(
 py_library(
     name = "plaidbench",
     srcs = ["plaidbench.py"],
-    data = glob(["networks/**"]),
+    data = glob([
+        "cifar16.npy",
+        "networks/**"]
+    ),
 )
 
 py_binary(
