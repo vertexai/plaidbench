@@ -17,4 +17,4 @@ install:
   - pip install -r requirements.txt
 
 script:
-  - PLADIML_EXPERIMENTAL=1 python plaidbench.py mobilenet
+  - PLAIDML_EXPERIMENTAL=1 python plaidbench.py mobilenet
