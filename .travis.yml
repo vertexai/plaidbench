@@ -10,7 +10,7 @@ before_install:
   - wget https://storage.googleapis.com/external_build_repo/opencl_runtime_16.1.1_x64_ubuntu_6.4.0.25.tgz
   - tar xzvf opencl_runtime_16.1.1_x64_ubuntu_6.4.0.25.tgz
   - pushd opencl_runtime_16.1.1_x64_ubuntu_6.4.0.25
-  - sudo ./install.sh --cli-mode --silent ../intel-ocl-silent
+  - sudo ./install.sh --cli-mode --silent ../.intel-ocl-silent
   - popd
 
 install:
