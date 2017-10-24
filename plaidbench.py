@@ -204,7 +204,7 @@ def main():
             json.dump(data, out)
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
-    sys.exit(exist_status)
+    sys.exit(exit_status)
 
 if __name__ == '__main__':
     main()
