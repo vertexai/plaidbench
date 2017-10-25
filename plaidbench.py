@@ -84,7 +84,9 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=8)
+    parser.add_argument('--example_size', type=int, default=1026)
+    parser.add_argument('-a', '--all', action='store_true')
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
@@ -100,6 +102,12 @@ def main():
     batch_size = int(args.batch_size)
     truncation_size = 64 / batch_size
     epoch_size = truncation_size * batch_size
+
+    if args.example_size % batch_size != 0:
+        print('Example size does not divide evenly by batch size, reseting example_size to 1026.')
+        args.example_size = 1026
+    if args.all:
+        inference_size = 256
 
     if args.train:
         # Load the dataset and scrap everything but the training images
@@ -171,7 +179,7 @@ def main():
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
-            for i in range(1024/batch_size):
+            for i in range(args.example_size/batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
