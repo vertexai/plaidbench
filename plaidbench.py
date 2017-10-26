@@ -75,6 +75,7 @@ def has_plaid():
 SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
+    exit_status = 0
     parser = argparse.ArgumentParser()
     plaidargs = parser.add_mutually_exclusive_group()
     plaidargs.add_argument('--plaid', action='store_true')
@@ -83,10 +84,11 @@ def main():
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/plaidbench_results')
     parser.add_argument('--callgrind', action='store_true')
+    parser.add_argument('-n', '--examples', type=int, default=1024)
+    parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
-    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
@@ -99,26 +101,36 @@ def main():
     if args.fp16:
         from keras.backend.common import set_floatx
         set_floatx('float16')
-    batch_size = int(args.batch_size)
-    truncation_size = 64 // batch_size
-    epoch_size = truncation_size * batch_size
 
-    # Load the dataset and scrap everything but the training images
-    # cifar10 data is too small, but we can upscale
-    from keras.datasets import cifar10
-    print('Loading the data')
-    (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
+    batch_size = int(args.batch_size)
+    epochs = args.epochs
+    examples = args.examples
+    epoch_size = examples // epochs
+
+    if epochs > examples:
+    	raise ValueError('The number of epochs must be less than the number of examples.')
+    if batch_size > epoch_size:
+        raise ValueError('The number of examples per epoch must be less than the batch size.')
+    if examples%epochs != 0:
+        raise ValueError('The number of examples must be divisible by the number of epochs.')
+    if epoch_size%batch_size != 0:
+        raise ValueError('The number of examples per epoch is not divisble by the batch size.')
 
     if args.train:
+        # Load the dataset and scrap everything but the training images
+        # cifar10 data is too small, but we can upscale
+        from keras.datasets import cifar10
+        print('Loading the data')
+        (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
         from keras.utils.np_utils import to_categorical
         x_train = x_train[:epoch_size]
         y_train_cats = y_train_cats[:epoch_size]
         y_train = to_categorical(y_train_cats, num_classes=1000)
     else:
-        x_train = x_train[:batch_size]
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        cifar_path = os.path.join(this_dir, 'cifar16.npy')
+        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
         y_train_cats = None
-    x_test = None
-    y_test_cats = None
 
     stop_watch = StopWatch(args.callgrind)
     compile_stop_watch = StopWatch(args.callgrind)
@@ -134,14 +146,14 @@ def main():
         globals = {}
         exec_(open(module).read(), globals)
 
-        print('Upscaling the data')
         x_train = globals['scale_dataset'](x_train)
 
-        print('Loading the model')
-        compile_stop_watch.start()
         model = globals['build_model']()
+        print("\nModel loaded.")
 
         # Prep the model and run an initial un-timed batch
+        print("Compiling and running initial batch, batch_size={}".format(batch_size))
+        compile_stop_watch.start()
         optimizer = 'sgd'
         if args.module[:3] == 'vgg':
             from keras.optimizers import SGD
@@ -151,9 +163,8 @@ def main():
 
         if args.train:
             # training
-            x = x_train[:((truncation_size)*batch_size)]
-            y = y_train[:((truncation_size)*batch_size)]
-            print("Compiling / Running initial batch, batch_size={}".format(batch_size))
+            x = x_train[:epoch_size]
+            y = y_train[:epoch_size]
             model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
             compile_stop_watch.stop()
             for i in range(args.epochs):
@@ -168,7 +179,6 @@ def main():
             output.contents = np.array(output.contents)
         else:
             # inference
-            print('Compiling / Running initial batch, batch_size={}'.format(batch_size))
             y = model.predict(x=x_train, batch_size=batch_size)
             compile_stop_watch.stop()
             output.contents = y
@@ -177,7 +187,11 @@ def main():
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
+<<<<<<< HEAD
             for i in range(1024//batch_size):
+=======
+            for i in range(examples/batch_size):
+>>>>>>> 5e7fac2c1e6f8a94c56345bd203175cf7fb3958b
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
@@ -194,6 +208,7 @@ def main():
     except Exception as ex:
         print(ex)
         data['exception'] = str(ex)
+        exit_status = -1
         if args.print_stacktraces:
             raise
         print('Set --print-stacktraces to see the entire traceback')
@@ -208,7 +223,7 @@ def main():
             json.dump(data, out)
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
-
+    sys.exit(exit_status)
 
 if __name__ == '__main__':
     main()
