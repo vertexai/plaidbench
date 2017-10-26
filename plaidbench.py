@@ -16,6 +16,8 @@
 
 from __future__ import print_function
 
+from six import exec_
+
 import argparse
 import errno
 import json
@@ -98,14 +100,15 @@ def main():
         from keras.backend.common import set_floatx
         set_floatx('float16')
     batch_size = int(args.batch_size)
-    truncation_size = 64 / batch_size
+    truncation_size = 64 // batch_size
     epoch_size = truncation_size * batch_size
 
-    # Load the dataset and scrap everything but the training images
-    # cifar10 data is too small, but we can upscale
-    from keras.datasets import cifar10
-    print('Loading the data')
-    (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
+    if True:
+      # Load the dataset and scrap everything but the training images
+      # cifar10 data is too small, but we can upscale
+      from keras.datasets import cifar10
+      print('Loading the data')
+      (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
 
     if args.train:
         from keras.utils.np_utils import to_categorical
@@ -130,7 +133,7 @@ def main():
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         globals = {}
-        execfile(module, globals)
+        exec_(open(module).read(), globals)
 
         print('Upscaling the data')
         x_train = globals['scale_dataset'](x_train)
@@ -171,11 +174,11 @@ def main():
             compile_stop_watch.stop()
             output.contents = y
             print('Warmup')
-            for i in range(32/batch_size + 1):
+            for i in range(32//batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
-            for i in range(1024/batch_size):
+            for i in range(1024//batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
