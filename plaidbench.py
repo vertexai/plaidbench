@@ -73,6 +73,7 @@ def has_plaid():
 SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
+    exit_status = 0
     parser = argparse.ArgumentParser()
     plaidargs = parser.add_mutually_exclusive_group()
     plaidargs.add_argument('--plaid', action='store_true')
@@ -81,10 +82,11 @@ def main():
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/plaidbench_results')
     parser.add_argument('--callgrind', action='store_true')
+    parser.add_argument('-n', '--examples', type=int, default=1024)
+    parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
-    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
@@ -97,9 +99,20 @@ def main():
     if args.fp16:
         from keras.backend.common import set_floatx
         set_floatx('float16')
+
     batch_size = int(args.batch_size)
-    truncation_size = 64 / batch_size
-    epoch_size = truncation_size * batch_size
+    epochs = args.epochs
+    examples = args.examples
+    epoch_size = examples / epochs
+
+    if epochs > examples:
+    	raise ValueError('The number of epochs must be less than the number of examples.')
+    if batch_size > epoch_size:
+        raise ValueError('The number of examples per epoch must be less than the batch size.')
+    if examples%epochs != 0:
+        raise ValueError('The number of examples must be divisible by the number of epochs.')
+    if epoch_size%batch_size != 0:
+        raise ValueError('The number of examples per epoch is not divisble by the batch size.')
 
     if args.train:
         # Load the dataset and scrap everything but the training images
@@ -147,8 +160,8 @@ def main():
 
         if args.train:
             # training
-            x = x_train[:((truncation_size)*batch_size)]
-            y = y_train[:((truncation_size)*batch_size)]
+            x = x_train[:epoch_size]
+            y = y_train[:epoch_size]
             model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
             compile_stop_watch.stop()
             for i in range(args.epochs):
@@ -171,7 +184,7 @@ def main():
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
-            for i in range(1024/batch_size):
+            for i in range(examples/batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
@@ -188,6 +201,7 @@ def main():
     except Exception as ex:
         print(ex)
         data['exception'] = str(ex)
+        exit_status = -1
         if args.print_stacktraces:
             raise
         print('Set --print-stacktraces to see the entire traceback')
@@ -202,7 +216,7 @@ def main():
             json.dump(data, out)
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
-
+    sys.exit(exit_status)
 
 if __name__ == '__main__':
     main()
