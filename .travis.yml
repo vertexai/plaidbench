@@ -1,7 +1,7 @@
 language: python
 os:
   - linux
-  - osx
+  # - osx ren-eable once before install is right for osx
 python:
   - "2.7"
   - "3.5"
