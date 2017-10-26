@@ -183,15 +183,13 @@ def main():
             compile_stop_watch.stop()
             output.contents = y
             print('Warmup')
+ 
             for i in range(32//batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
-<<<<<<< HEAD
-            for i in range(1024//batch_size):
-=======
-            for i in range(examples/batch_size):
->>>>>>> 5e7fac2c1e6f8a94c56345bd203175cf7fb3958b
+
+            for i in range(examples//batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
