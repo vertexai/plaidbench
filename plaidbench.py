@@ -16,6 +16,8 @@
 
 from __future__ import print_function
 
+from six import exec_
+
 import argparse
 import errno
 import json
@@ -82,12 +84,43 @@ def value_check(examples, epochs, batch_size):
         raise ValueError('The number of examples per epoch is not divisble by the batch size.')
 
 
-def train(network):
-    print('train     : ' + network)
+def train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output):
+    # Training
+    x = x_train[:epoch_size]
+    y = y_train[:epoch_size]
+    model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
+    compile_stop_watch.stop()
+    for i in range(epochs):
+        if i == 1:
+            print('Doing the main timing')
+        stop_watch.start()
+        history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
+        stop_watch.stop()
+        time.sleep(.025 * random.random())
+        if i == 0:
+            output.contents = [history.history['loss']]
+    output.contents = np.array(output.contents)
 
 
-def inference(network):
-    print('inference : ' + network)
+def inference(network, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch):
+        # inference
+        print('start inference  : ' + network)
+        y = model.predict(x=x_train, batch_size=batch_size)
+        compile_stop_watch.stop()
+        output.contents = y
+        print('Warmup')
+
+        for i in range(32//batch_size + 1):
+            y = model.predict(x=x_train, batch_size=batch_size)
+
+        # Now start the clock and run 100 batches
+        print('Doing the main timing')
+
+        for i in range(examples//batch_size):
+            stop_watch.start()
+            y = model.predict(x=x_train, batch_size=batch_size)
+            stop_watch.stop()
+            time.sleep(.025 * random.random())
 
 
 SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
@@ -110,6 +143,7 @@ def main():
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
 
+    # Plaid, fp16, and verbosity setup
     if args.plaid or (not args.no_plaid and has_plaid()):
         print('Using PlaidML backend.')
         import plaidml.keras
@@ -120,32 +154,16 @@ def main():
         from keras.backend.common import set_floatx
         set_floatx('float16')
 
+    # variable declaration and value check
     batch_size = int(args.batch_size)
     epochs = args.epochs
     examples = args.examples
     epoch_size = examples / epochs
     value_check(examples, epochs, batch_size)
 
-    # blanket run
-    if args.module == 'blanket':
-        # lower examples size to hurry training
-        examples = 256
-        value_check(examples, epochs, batch_size)
-        for network in SUPPORTED_NETWORKS:
-            if network != 'blanket':   
-                train(network)
-    # training run
-    elif args.train:
-        value_check(examples, epochs, batch_size)
-        train(args.module)
-    # inference run
-    else:
-        value_check(examples, epochs, batch_size)
-        inference(args.module)
-
+    # Setup
     if args.train:
-        # Load the dataset and scrap everything but the training images
-        # cifar10 data is too small, but we can upscale
+        # Training setup
         from keras.datasets import cifar10
         print('Loading the data')
         (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
@@ -154,11 +172,13 @@ def main():
         y_train_cats = y_train_cats[:epoch_size]
         y_train = to_categorical(y_train_cats, num_classes=1000)
     else:
+        # Inference setup
         this_dir = os.path.dirname(os.path.abspath(__file__))
         cifar_path = os.path.join(this_dir, 'cifar16.npy')
         x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
         y_train_cats = None
 
+    # Stopwatch and Output intialization
     stop_watch = StopWatch(args.callgrind)
     compile_stop_watch = StopWatch(args.callgrind)
     output = Output()
@@ -167,11 +187,14 @@ def main():
     }
     stop_watch.start_outer()
     compile_stop_watch.start_outer()
+
+    # Loading the model
     try:
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         globals = {}
-        execfile(module, globals)
+        exec_(open(module).read(), globals)
+
         x_train = globals['scale_dataset'](x_train)
 
         model = globals['build_model']()
@@ -187,38 +210,25 @@ def main():
         model.compile(optimizer=optimizer, loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-        if args.train:
-            # training
-            x = x_train[:epoch_size]
-            y = y_train[:epoch_size]
-            model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
-            compile_stop_watch.stop()
-            for i in range(args.epochs):
-                if i == 1:
-                    print('Doing the main timing')
-                stop_watch.start()
-                history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
-                stop_watch.stop()
-                time.sleep(.025 * random.random())
-                if i == 0:
-                    output.contents = [history.history['loss']]
-            output.contents = np.array(output.contents)
+        # blanket run
+        if args.module == 'blanket':
+            # lower examples size to hurry training
+            examples = 256
+            value_check(examples, epochs, batch_size)
+            for network in SUPPORTED_NETWORKS:
+                if network != 'blanket':   
+                    if args.train:
+                        train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
+                    else:
+                        inference(network, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
+        # training run
+        elif args.train:
+            train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
+        # inference run
         else:
-            # inference
-            y = model.predict(x=x_train, batch_size=batch_size)
-            compile_stop_watch.stop()
-            output.contents = y
-            print('Warmup')
-            for i in range(32/batch_size + 1):
-                y = model.predict(x=x_train, batch_size=batch_size)
-            # Now start the clock and run 100 batches
-            print('Doing the main timing')
-            for i in range(examples/batch_size):
-                stop_watch.start()
-                y = model.predict(x=x_train, batch_size=batch_size)
-                stop_watch.stop()
-                time.sleep(.025 * random.random())
-
+            inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
+        
+        # Record times and data
         stop_watch.stop()
         compile_stop_watch.stop()
         execution_duration = stop_watch.elapsed()
@@ -227,13 +237,17 @@ def main():
         data['compile_duration'] = compile_duration
         print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
         data['precision'] = output.precision
+
+    # Error handling
     except Exception as ex:
         print(ex)
         data['exception'] = str(ex)
         exit_status = -1
         if args.print_stacktraces:
-            raise
+            raise NotImplementedError
         print('Set --print-stacktraces to see the entire traceback')
+
+    # Write results and close 
     finally:
         try:
             os.makedirs(args.result)
@@ -246,6 +260,8 @@ def main():
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
     sys.exit(exit_status)
+
+
 
 if __name__ == '__main__':
     main()
