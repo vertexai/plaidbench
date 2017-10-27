@@ -26,7 +26,13 @@ import time
 import random
 
 
+def printf(*args, **kwargs):
+    print(*args, **kwargs)
+    sys.stdout.flush()
+
+
 class StopWatch(object):
+
     def __init__(self, use_callgrind):
         self.__start = None
         self.__stop = None
@@ -41,8 +47,8 @@ class StopWatch(object):
     def start(self):
         self.__start = time.time()
         if self.__use_callgrind:
-          os.system('callgrind_control --instr=on %d' % (os.getpid(),))
-          self.__callgrind_active = True
+            os.system('callgrind_control --instr=on %d' % (os.getpid(),))
+            self.__callgrind_active = True
 
     def stop(self):
         if self.__start is not None:
@@ -58,9 +64,10 @@ class StopWatch(object):
 
 
 class Output(object):
-  def __init__(self):
-    self.contents = None
-    self.precision = 'untested'
+
+    def __init__(self):
+        self.contents = None
+        self.precision = 'untested'
 
 
 def has_plaid():
@@ -70,7 +77,9 @@ def has_plaid():
     except ImportError:
         return False
 
+
 SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
+
 
 def main():
     exit_status = 0
@@ -79,7 +88,7 @@ def main():
     plaidargs.add_argument('--plaid', action='store_true')
     plaidargs.add_argument('--no-plaid', action='store_true')
     parser.add_argument('--fp16', action='store_true')
-    parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
+    parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--result', default='/tmp/plaidbench_results')
     parser.add_argument('--callgrind', action='store_true')
     parser.add_argument('-n', '--examples', type=int, default=1024)
@@ -91,7 +100,7 @@ def main():
     args = parser.parse_args()
 
     if args.plaid or (not args.no_plaid and has_plaid()):
-        print('Using PlaidML backend.')
+        printf('Using PlaidML backend.')
         import plaidml.keras
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
@@ -118,7 +127,7 @@ def main():
         # Load the dataset and scrap everything but the training images
         # cifar10 data is too small, but we can upscale
         from keras.datasets import cifar10
-        print('Loading the data')
+        printf('Loading the data')
         (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
         from keras.utils.np_utils import to_categorical
         x_train = x_train[:epoch_size]
@@ -127,15 +136,13 @@ def main():
     else:
         this_dir = os.path.dirname(os.path.abspath(__file__))
         cifar_path = os.path.join(this_dir, 'cifar16.npy')
-        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
+        x_train = np.load(cifar_path).repeat(1 + batch_size / 16, axis=0)[:batch_size]
         y_train_cats = None
 
     stop_watch = StopWatch(args.callgrind)
     compile_stop_watch = StopWatch(args.callgrind)
     output = Output()
-    data = {
-        'example': args.module
-    }
+    data = {'example': args.module}
     stop_watch.start_outer()
     compile_stop_watch.start_outer()
     try:
@@ -146,17 +153,16 @@ def main():
         x_train = globals['scale_dataset'](x_train)
 
         model = globals['build_model']()
-        print("\nModel loaded.")
+        printf("\nModel loaded.")
 
         # Prep the model and run an initial un-timed batch
-        print("Compiling and running initial batch, batch_size={}".format(batch_size))
+        printf("Compiling and running initial batch, batch_size={}".format(batch_size))
         compile_stop_watch.start()
         optimizer = 'sgd'
         if args.module[:3] == 'vgg':
             from keras.optimizers import SGD
             optimizer = SGD(lr=0.0001)
-        model.compile(optimizer=optimizer, loss='categorical_crossentropy',
-                      metrics=['accuracy'])
+        model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
         if args.train:
             # training
@@ -166,9 +172,10 @@ def main():
             compile_stop_watch.stop()
             for i in range(args.epochs):
                 if i == 1:
-                    print('Doing the main timing')
+                    printf('Doing the main timing')
                 stop_watch.start()
-                history = model.fit(x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
+                history = model.fit(
+                    x=x, y=y, batch_size=batch_size, epochs=1, shuffle=False, initial_epoch=0)
                 stop_watch.stop()
                 time.sleep(.025 * random.random())
                 if i == 0:
@@ -179,8 +186,8 @@ def main():
             y = model.predict(x=x_train, batch_size=batch_size)
             compile_stop_watch.stop()
             output.contents = y
-            print('Warmup')
-            for i in range(32/batch_size + 1):
+            printf('Warmup')
+            for i in range(32 / batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
@@ -196,21 +203,22 @@ def main():
         compile_duration = compile_stop_watch.elapsed()
         data['execution_duration'] = execution_duration
         data['compile_duration'] = compile_duration
-        print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
+        printf('Example finished, elapsed: {} (compile), {} (execution)'.format(
+            compile_duration, execution_duration))
         data['precision'] = output.precision
     except Exception as ex:
-        print(ex)
+        printf(ex)
         data['exception'] = str(ex)
         exit_status = -1
         if args.print_stacktraces:
             raise
-        print('Set --print-stacktraces to see the entire traceback')
+        printf('Set --print-stacktraces to see the entire traceback')
     finally:
         try:
             os.makedirs(args.result)
         except OSError as ex:
             if ex.errno != errno.EEXIST:
-                print(ex)
+                printf(ex)
                 return
         with open(os.path.join(args.result, 'result.json'), 'w') as out:
             json.dump(data, out)
