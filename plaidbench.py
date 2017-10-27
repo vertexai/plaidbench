@@ -123,6 +123,19 @@ def inference(network, model, batch_size, compile_stop_watch, output, x_train, e
             time.sleep(.025 * random.random())
 
 
+def load_model(module, x_train):
+    print('start load model')
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    module = os.path.join(this_dir, 'networks', '%s.py' % module)
+    globals = {}
+    exec_(open(module).read(), globals)
+    x_train = globals['scale_dataset'](x_train)
+    model = globals['build_model']()
+    print("\nModel loaded.")
+    print('end load model')
+    return module, x_train, model
+
+
 SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
@@ -190,15 +203,16 @@ def main():
 
     # Loading the model
     try:
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-        module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
-        globals = {}
-        exec_(open(module).read(), globals)
+        module, x_train, model = load_model(args.module, x_train)
 
-        x_train = globals['scale_dataset'](x_train)
-
-        model = globals['build_model']()
-        print("\nModel loaded.")
+        # Load model
+        # this_dir = os.path.dirname(os.path.abspath(__file__))
+        # module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
+        # globals = {}
+        # exec_(open(module).read(), globals)
+        # x_train = globals['scale_dataset'](x_train)
+        # model = globals['build_model']()
+        # print("\nModel loaded.")
 
         # Prep the model and run an initial un-timed batch
         print("Compiling and running initial batch, batch_size={}".format(batch_size))
