@@ -70,7 +70,27 @@ def has_plaid():
     except ImportError:
         return False
 
-SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
+
+def value_check(examples, epochs, batch_size):
+    if epochs > examples:
+        raise ValueError('The number of epochs must be less than the number of examples.')
+    if batch_size > (examples / epochs):
+        raise ValueError('The number of examples per epoch must be less than the batch size.')
+    if examples % epochs != 0:
+        raise ValueError('The number of examples must be divisible by the number of epochs.')
+    if (examples / epochs) % batch_size != 0:
+        raise ValueError('The number of examples per epoch is not divisble by the batch size.')
+
+
+def train(network):
+    print('train     : ' + network)
+
+
+def inference(network):
+    print('inference : ' + network)
+
+
+SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
     exit_status = 0
@@ -104,15 +124,24 @@ def main():
     epochs = args.epochs
     examples = args.examples
     epoch_size = examples / epochs
+    value_check(examples, epochs, batch_size)
 
-    if epochs > examples:
-    	raise ValueError('The number of epochs must be less than the number of examples.')
-    if batch_size > epoch_size:
-        raise ValueError('The number of examples per epoch must be less than the batch size.')
-    if examples%epochs != 0:
-        raise ValueError('The number of examples must be divisible by the number of epochs.')
-    if epoch_size%batch_size != 0:
-        raise ValueError('The number of examples per epoch is not divisble by the batch size.')
+    # blanket run
+    if args.module == 'blanket':
+        # lower examples size to hurry training
+        examples = 256
+        value_check(examples, epochs, batch_size)
+        for network in SUPPORTED_NETWORKS:
+            if network != 'blanket':   
+                train(network)
+    # training run
+    elif args.train:
+        value_check(examples, epochs, batch_size)
+        train(args.module)
+    # inference run
+    else:
+        value_check(examples, epochs, batch_size)
+        inference(args.module)
 
     if args.train:
         # Load the dataset and scrap everything but the training images
