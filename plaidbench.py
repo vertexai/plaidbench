@@ -124,7 +124,6 @@ def inference(network, model, batch_size, compile_stop_watch, output, x_train, e
 
 
 def load_model(module, x_train):
-    print('start load model')
     this_dir = os.path.dirname(os.path.abspath(__file__))
     module = os.path.join(this_dir, 'networks', '%s.py' % module)
     globals = {}
@@ -132,8 +131,18 @@ def load_model(module, x_train):
     x_train = globals['scale_dataset'](x_train)
     model = globals['build_model']()
     print("\nModel loaded.")
-    print('end load model')
     return module, x_train, model
+
+
+def run_intial(batch_size, compile_stop_watch, network, model):
+    print("Compiling and running initial batch, batch_size={}".format(batch_size))
+    compile_stop_watch.start()
+    optimizer = 'sgd'
+    if network[:3] == 'vgg':
+        from keras.optimizers import SGD
+        optimizer = SGD(lr=0.0001)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
 
 SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
@@ -201,28 +210,23 @@ def main():
     stop_watch.start_outer()
     compile_stop_watch.start_outer()
 
-    # Loading the model
+    # main run loop
     try:
+        # Loading the model
         module, x_train, model = load_model(args.module, x_train)
 
-        # Load model
-        # this_dir = os.path.dirname(os.path.abspath(__file__))
-        # module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
-        # globals = {}
-        # exec_(open(module).read(), globals)
-        # x_train = globals['scale_dataset'](x_train)
-        # model = globals['build_model']()
-        # print("\nModel loaded.")
+        # Prep the model and run an initial un-timed batch
+        run_intial(batch_size, compile_stop_watch, args.module, model)
 
         # Prep the model and run an initial un-timed batch
-        print("Compiling and running initial batch, batch_size={}".format(batch_size))
-        compile_stop_watch.start()
-        optimizer = 'sgd'
-        if args.module[:3] == 'vgg':
-            from keras.optimizers import SGD
-            optimizer = SGD(lr=0.0001)
-        model.compile(optimizer=optimizer, loss='categorical_crossentropy',
-                      metrics=['accuracy'])
+        # print("Compiling and running initial batch, batch_size={}".format(batch_size))
+        # compile_stop_watch.start()
+        # optimizer = 'sgd'
+        # if args.module[:3] == 'vgg':
+        #     from keras.optimizers import SGD
+        #     optimizer = SGD(lr=0.0001)
+        # model.compile(optimizer=optimizer, loss='categorical_crossentropy',
+        #               metrics=['accuracy'])
 
         # blanket run
         if args.module == 'blanket':
