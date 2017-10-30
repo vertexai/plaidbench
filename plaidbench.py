@@ -16,6 +16,8 @@
 
 from __future__ import print_function
 
+from six import exec_
+
 import argparse
 import errno
 import json
@@ -112,7 +114,7 @@ def main():
     batch_size = int(args.batch_size)
     epochs = args.epochs
     examples = args.examples
-    epoch_size = examples / epochs
+    epoch_size = examples // epochs
 
     if epochs > examples:
     	raise ValueError('The number of epochs must be less than the number of examples.')
@@ -127,7 +129,7 @@ def main():
         # Load the dataset and scrap everything but the training images
         # cifar10 data is too small, but we can upscale
         from keras.datasets import cifar10
-        printf('Loading the data')
+        print('Loading the data')
         (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
         from keras.utils.np_utils import to_categorical
         x_train = x_train[:epoch_size]
@@ -136,7 +138,7 @@ def main():
     else:
         this_dir = os.path.dirname(os.path.abspath(__file__))
         cifar_path = os.path.join(this_dir, 'cifar16.npy')
-        x_train = np.load(cifar_path).repeat(1 + batch_size / 16, axis=0)[:batch_size]
+        x_train = np.load(cifar_path).repeat(1 + batch_size // 16, axis=0)[:batch_size]
         y_train_cats = None
 
     stop_watch = StopWatch(args.callgrind)
@@ -149,14 +151,15 @@ def main():
         this_dir = os.path.dirname(os.path.abspath(__file__))
         module = os.path.join(this_dir, 'networks', '%s.py' % args.module)
         globals = {}
-        execfile(module, globals)
+        exec_(open(module).read(), globals)
+
         x_train = globals['scale_dataset'](x_train)
 
         model = globals['build_model']()
-        printf("\nModel loaded.")
+        print("\nModel loaded.")
 
         # Prep the model and run an initial un-timed batch
-        printf("Compiling and running initial batch, batch_size={}".format(batch_size))
+        print("Compiling and running initial batch, batch_size={}".format(batch_size))
         compile_stop_watch.start()
         optimizer = 'sgd'
         if args.module[:3] == 'vgg':
@@ -186,12 +189,23 @@ def main():
             y = model.predict(x=x_train, batch_size=batch_size)
             compile_stop_watch.stop()
             output.contents = y
+<<<<<<< HEAD
             printf('Warmup')
             for i in range(32 / batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
             for i in range(examples/batch_size):
+=======
+            print('Warmup')
+ 
+            for i in range(32//batch_size + 1):
+                y = model.predict(x=x_train, batch_size=batch_size)
+            # Now start the clock and run 100 batches
+            print('Doing the main timing')
+
+            for i in range(examples//batch_size):
+>>>>>>> 02fcc10fd5859570b263166a0f40f33a8b0f0294
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
