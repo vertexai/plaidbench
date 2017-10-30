@@ -183,6 +183,17 @@ def main():
     epoch_size = examples / epochs
     value_check(examples, epochs, batch_size)
 
+    # DEBUG - Blanket run
+    if args.module == 'blanket':
+        examples = 256;
+        print("Running blanket, setting examples size to 256 for speediness")
+        value_check(examples, epochs, batch_size)
+        for network in SUPPORTED_NETWORKS:
+            if network != 'blanket':
+                args.module = network  
+                print(args.module)   
+        sys.exit(exit_status)
+
     # Setup
     if args.train:
         # Training setup
@@ -210,7 +221,7 @@ def main():
     stop_watch.start_outer()
     compile_stop_watch.start_outer()
 
-    # main run loop
+    # Attempt to run 
     try:
         # Loading the model
         module, x_train, model = load_model(args.module, x_train)
@@ -218,43 +229,24 @@ def main():
         # Prep the model and run an initial un-timed batch
         run_intial(batch_size, compile_stop_watch, args.module, model)
 
-        # Prep the model and run an initial un-timed batch
-        # print("Compiling and running initial batch, batch_size={}".format(batch_size))
-        # compile_stop_watch.start()
-        # optimizer = 'sgd'
-        # if args.module[:3] == 'vgg':
-        #     from keras.optimizers import SGD
-        #     optimizer = SGD(lr=0.0001)
-        # model.compile(optimizer=optimizer, loss='categorical_crossentropy',
-        #               metrics=['accuracy'])
-
-        # blanket run
-        if args.module == 'blanket':
-            # lower examples size to hurry training
-            examples = 256
-            value_check(examples, epochs, batch_size)
-            for network in SUPPORTED_NETWORKS:
-                if network != 'blanket':   
-                    if args.train:
-                        train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
-                    else:
-                        inference(network, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
         # training run
-        elif args.train:
+        if args.train:
             train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
         # inference run
         else:
             inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
         
-        # Record times and data
+        # Record times
         stop_watch.stop()
         compile_stop_watch.stop()
         execution_duration = stop_watch.elapsed()
         compile_duration = compile_stop_watch.elapsed()
+        
+        # Record data
         data['execution_duration'] = execution_duration
         data['compile_duration'] = compile_duration
-        print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
         data['precision'] = output.precision
+        print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
 
     # Error handling
     except Exception as ex:
@@ -277,8 +269,9 @@ def main():
             json.dump(data, out)
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
-    sys.exit(exit_status)
 
+    # Exit program 
+    sys.exit(exit_status)
 
 
 if __name__ == '__main__':
