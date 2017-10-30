@@ -89,7 +89,9 @@ def train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, e
     x = x_train[:epoch_size]
     y = y_train[:epoch_size]
     model.train_on_batch(x_train[0:batch_size], y_train[0:batch_size])
+    
     compile_stop_watch.stop()
+
     for i in range(epochs):
         if i == 1:
             print('Doing the main timing')
@@ -103,24 +105,45 @@ def train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, e
 
 
 def inference(network, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch):
-        # inference
-        print('start inference  : ' + network)
+    # Inference
+    y = model.predict(x=x_train, batch_size=batch_size)
+    
+    compile_stop_watch.stop()
+    output.contents = y
+    print('Warmup')
+
+    for i in range(32//batch_size + 1):
         y = model.predict(x=x_train, batch_size=batch_size)
-        compile_stop_watch.stop()
-        output.contents = y
-        print('Warmup')
 
-        for i in range(32//batch_size + 1):
-            y = model.predict(x=x_train, batch_size=batch_size)
+    # Now start the clock and run 100 batches
+    print('Doing the main timing')
 
-        # Now start the clock and run 100 batches
-        print('Doing the main timing')
+    for i in range(examples//batch_size):
+        stop_watch.start()
+        y = model.predict(x=x_train, batch_size=batch_size)
+        stop_watch.stop()
+        time.sleep(.025 * random.random())
 
-        for i in range(examples//batch_size):
-            stop_watch.start()
-            y = model.predict(x=x_train, batch_size=batch_size)
-            stop_watch.stop()
-            time.sleep(.025 * random.random())
+
+def setup(train, epoch_size, batch_size):
+    # Setup
+    if train:
+        # Training setup
+        from keras.datasets import cifar10
+        from keras.utils.np_utils import to_categorical
+        print('Loading the data')
+        (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
+        x_train = x_train[:epoch_size]
+        y_train_cats = y_train_cats[:epoch_size]
+        y_train = to_categorical(y_train_cats, num_classes=1000)
+    else:
+        # Inference setup
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        cifar_path = os.path.join(this_dir, 'cifar16.npy')
+        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
+        y_train_cats = None
+        y_train = None
+    return x_train, y_train
 
 
 def load_model(module, x_train):
@@ -183,6 +206,14 @@ def main():
     epoch_size = examples / epochs
     value_check(examples, epochs, batch_size)
 
+    # Stopwatch and Output intialization
+    stop_watch = StopWatch(args.callgrind)
+    compile_stop_watch = StopWatch(args.callgrind)
+    output = Output()
+    data = {
+        'example': args.module
+    }
+
     # DEBUG - Blanket run
     if args.module == 'blanket':
         examples = 256;
@@ -191,33 +222,13 @@ def main():
         for network in SUPPORTED_NETWORKS:
             if network != 'blanket':
                 args.module = network  
-                print(args.module)   
-        sys.exit(exit_status)
-
+                print(args.module)  
+        sys.exit(exit_status) 
+                
     # Setup
-    if args.train:
-        # Training setup
-        from keras.datasets import cifar10
-        print('Loading the data')
-        (x_train, y_train_cats), (x_test, y_test_cats) = cifar10.load_data()
-        from keras.utils.np_utils import to_categorical
-        x_train = x_train[:epoch_size]
-        y_train_cats = y_train_cats[:epoch_size]
-        y_train = to_categorical(y_train_cats, num_classes=1000)
-    else:
-        # Inference setup
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-        cifar_path = os.path.join(this_dir, 'cifar16.npy')
-        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
-        y_train_cats = None
-
-    # Stopwatch and Output intialization
-    stop_watch = StopWatch(args.callgrind)
-    compile_stop_watch = StopWatch(args.callgrind)
-    output = Output()
-    data = {
-        'example': args.module
-    }
+    x_train, y_train = setup(args.train, epoch_size, batch_size)
+    
+    # Start stopwatches
     stop_watch.start_outer()
     compile_stop_watch.start_outer()
 
@@ -236,9 +247,11 @@ def main():
         else:
             inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
         
-        # Record times
+        # Stop stopwatches
         stop_watch.stop()
         compile_stop_watch.stop()
+
+        # Record stopwatch times
         execution_duration = stop_watch.elapsed()
         compile_duration = compile_stop_watch.elapsed()
         
@@ -246,17 +259,26 @@ def main():
         data['execution_duration'] = execution_duration
         data['compile_duration'] = compile_duration
         data['precision'] = output.precision
+
+        # Print statement
         print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
 
     # Error handling
     except Exception as ex:
+        # Print statements
         print(ex)
-        data['exception'] = str(ex)
-        exit_status = -1
-        if args.print_stacktraces:
-            raise NotImplementedError
         print('Set --print-stacktraces to see the entire traceback')
 
+        # Record error
+        data['exception'] = str(ex)
+        
+        # Set new exist status
+        exit_status = -1
+
+        # stacktrace loop
+        if args.print_stacktraces:
+            raise NotImplementedError
+        
     # Write results and close 
     finally:
         try:
