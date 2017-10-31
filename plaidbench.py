@@ -189,14 +189,6 @@ def main():
             y = model.predict(x=x_train, batch_size=batch_size)
             compile_stop_watch.stop()
             output.contents = y
-<<<<<<< HEAD
-            printf('Warmup')
-            for i in range(32 / batch_size + 1):
-                y = model.predict(x=x_train, batch_size=batch_size)
-            # Now start the clock and run 100 batches
-            print('Doing the main timing')
-            for i in range(examples/batch_size):
-=======
             print('Warmup')
  
             for i in range(32//batch_size + 1):
@@ -205,7 +197,6 @@ def main():
             print('Doing the main timing')
 
             for i in range(examples//batch_size):
->>>>>>> 02fcc10fd5859570b263166a0f40f33a8b0f0294
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
