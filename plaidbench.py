@@ -191,12 +191,12 @@ def main():
             output.contents = y
             print('Warmup')
  
-            for i in range(32//batch_size + 1):
+            for i in range(32 // batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
             print('Doing the main timing')
 
-            for i in range(examples//batch_size):
+            for i in range(examples // batch_size):
                 stop_watch.start()
                 y = model.predict(x=x_train, batch_size=batch_size)
                 stop_watch.stop()
@@ -204,11 +204,11 @@ def main():
 
         stop_watch.stop()
         compile_stop_watch.stop()
-        execution_duration = stop_watch.elapsed()
+        execution_duration = stop_watch.elapsed() / examples
         compile_duration = compile_stop_watch.elapsed()
         data['execution_duration'] = execution_duration
         data['compile_duration'] = compile_duration
-        printf('Example finished, elapsed: {} (compile), {} (execution)'.format(
+        printf('Example finished, elapsed: {} (compile), {} (execution, per example)'.format(
             compile_duration, execution_duration))
         data['precision'] = output.precision
     except Exception as ex:
