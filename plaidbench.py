@@ -167,7 +167,7 @@ def run_intial(batch_size, compile_stop_watch, network, model):
     model.compile(optimizer=optimizer, loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
-#SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
+
 SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
@@ -215,7 +215,7 @@ def main():
     output = Output()
     data['train'] = args.train
 
-    # DEBUG - Blanket run - runs every supported network
+    # Blanket run - runs every supported network
     if args.module == 'blanket':
         data['blanket_run'] = True
         outputs = {}
@@ -245,14 +245,16 @@ def main():
                     # Prep the model and run an initial un-timed batch
                     run_intial(batch_size, compile_stop_watch, args.module, model)
 
+                    '''
                     # training run
-                    #if args.train:
-                    #    value_check(examples, epochs, batch_size)
-                    #    train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
+                    if args.train:
+                        value_check(examples, epochs, batch_size)
+                        train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
                     # inference run
-                    #else:
-                    #    inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
-                    
+                    else:
+                        inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
+                    '''
+
                     # Stop stopwatches
                     stop_watch.stop()
                     compile_stop_watch.stop()
