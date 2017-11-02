@@ -327,7 +327,6 @@ def main():
                 return
         with open(os.path.join(args.result, 'report.json'), 'w') as out:
             json.dump(outputs, out)
-
     # close
     sys.exit(exit_status)
 
