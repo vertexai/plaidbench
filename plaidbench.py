@@ -76,11 +76,11 @@ def has_plaid():
 def value_check(examples, epochs, batch_size):
     if epochs > examples:
         raise ValueError('The number of epochs must be less than the number of examples.')
-    if batch_size > (examples / epochs):
+    if batch_size > (examples // epochs):
         raise ValueError('The number of examples per epoch must be greater than the batch size.')
     if examples % epochs != 0:
         raise ValueError('The number of examples must be divisible by the number of epochs.')
-    if (examples / epochs) % batch_size != 0:
+    if (examples // epochs) % batch_size != 0:
         raise ValueError('The number of examples per epoch is not divisble by the batch size.')
 
 
@@ -140,7 +140,7 @@ def setup(train, epoch_size, batch_size):
         # Inference setup
         this_dir = os.path.dirname(os.path.abspath(__file__))
         cifar_path = os.path.join(this_dir, 'cifar16.npy')
-        x_train = np.load(cifar_path).repeat(1 + batch_size/16, axis=0)[:batch_size]
+        x_train = np.load(cifar_path).repeat(1 + batch_size//16, axis=0)[:batch_size]
         y_train_cats = None
         y_train = None
     return x_train, y_train
@@ -168,7 +168,7 @@ def run_intial(batch_size, compile_stop_watch, network, model):
                   metrics=['accuracy'])
 
 
-SUPPORTED_NETWORKS = ['blanket', 'inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
+SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
     exit_status = 0
@@ -184,18 +184,15 @@ def main():
     parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
+    parser.add_argument('--blanket-run', action='store_true')
     parser.add_argument('--print-stacktraces', action='store_true')
     parser.add_argument('module', choices=SUPPORTED_NETWORKS)
     args = parser.parse_args()
-
-    data = {}
 
     # Plaid, fp16, and verbosity setup
     if args.plaid or (not args.no_plaid and has_plaid()):
         print('Using PlaidML backend.')
         import plaidml.keras
-        import plaidml
-        data['plaid'] = plaidml.__version__
         if args.verbose:
             plaidml._internal_set_vlog(args.verbose)
         plaidml.keras.install_backend()
@@ -203,107 +200,45 @@ def main():
         from keras.backend.common import set_floatx
         set_floatx('float16')
 
-    # variable declaration
+    # variable declaration/intialization
     batch_size = int(args.batch_size)
     epochs = args.epochs
     examples = args.examples
-    epoch_size = examples / epochs
+    epoch_size = examples // epochs
+    networks = []
+    output = Output()
 
     # Stopwatch and Output intialization
     stop_watch = StopWatch(args.callgrind)
     compile_stop_watch = StopWatch(args.callgrind)
-    output = Output()
-    data['train'] = args.train
-
+    
     # Blanket run - runs every supported network
-    if args.module == 'blanket':
-        data['blanket_run'] = True
+    if args.blanket_run:
+        data = {}
         outputs = {}
-        outputs['run_configuration'] = data.copy()
-        
-        print("Running blanket, setting examples size to 256 for speediness")
+        networks = list(SUPPORTED_NETWORKS)
+
+        print("Plaid Blanket Run: setting examples size to 256 for speed")
         examples = 256;
-        
-        for network in SUPPORTED_NETWORKS:
-            if network != 'blanket':
-                print("\nCurrent network run : " + network)  
-                args.module = network
-                network_data = {}
 
-                # Run network
-                try:
-                    # Setup
-                    x_train, y_train = setup(args.train, epoch_size, batch_size)
-                
-                    # Start stopwatches
-                    stop_watch.start_outer()
-                    compile_stop_watch.start_outer()
+        if args.plaid or (not args.no_plaid and has_plaid()):
+            import plaidml
+            data['plaid'] = plaidml.__version__
+        else:
+            data['plaid'] = None
 
-                    # Loading the model
-                    module, x_train, model = load_model(args.module, x_train)
-
-                    # Prep the model and run an initial un-timed batch
-                    run_intial(batch_size, compile_stop_watch, args.module, model)
-
-                    '''
-                    # training run
-                    if args.train:
-                        value_check(examples, epochs, batch_size)
-                        train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
-                    # inference run
-                    else:
-                        inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
-                    '''
-
-                    # Stop stopwatches
-                    stop_watch.stop()
-                    compile_stop_watch.stop()
-
-                    # Record stopwatch times
-                    execution_duration = stop_watch.elapsed()
-                    compile_duration = compile_stop_watch.elapsed()
-                    
-                    # Record data
-                    network_data['execution_duration'] = execution_duration
-                    network_data['compile_duration'] = compile_duration
-                    network_data['precision'] = output.precision
-
-                    # Print statement
-                    print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
-
-                # Error handling
-                except Exception as ex:
-                    # Print statements
-                    print(ex)
-                    print('Set --print-stacktraces to see the entire traceback')
-
-                    # Record error
-                    network_data['exception'] = str(ex)
-                    
-                    # Set new exist status
-                    exit_status = -1
-
-                    # stacktrace loop
-                    if args.print_stacktraces:
-                        raise NotImplementedError                
-                
-                # stores network data in dictionary
-                outputs[network] = network_data
-
-        # write all data to report.json
-        try:
-            os.makedirs(args.result)
-        except OSError as ex:
-            if ex.errno != errno.EEXIST:
-                print(ex)
-                return
-        with open(os.path.join(args.result, 'report.json'), 'w') as out:
-            json.dump(outputs, out)  
-
+        data['train'] = args.train
+        data['blanket_run'] = True
+        outputs['run_configuration'] = data.copy()
     else:
-    # Attempt to run singular train or inference run
-        data['example'] = args.module
-        
+        networks.append(args.module)
+
+    
+    for network in networks:
+        print("\nCurrent network being run : " + network)  
+        args.module = network
+        network_data = {}
+
         # Run network
         try:
             # Setup
@@ -323,10 +258,10 @@ def main():
             if args.train:
                 value_check(examples, epochs, batch_size)
                 train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
-            # inference run
+             inference run
             else:
                 inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
-            
+
             # Stop stopwatches
             stop_watch.stop()
             compile_stop_watch.stop()
@@ -336,9 +271,9 @@ def main():
             compile_duration = compile_stop_watch.elapsed()
             
             # Record data
-            data['execution_duration'] = execution_duration
-            data['compile_duration'] = compile_duration
-            data['precision'] = output.precision
+            network_data['execution_duration'] = execution_duration
+            network_data['compile_duration'] = compile_duration
+            network_data['precision'] = output.precision
 
             # Print statement
             print('Example finished, elapsed: {} (compile), {} (execution)'.format(compile_duration, execution_duration))
@@ -350,17 +285,22 @@ def main():
             print('Set --print-stacktraces to see the entire traceback')
 
             # Record error
-            data['exception'] = str(ex)
+            network_data['exception'] = str(ex)
             
             # Set new exist status
             exit_status = -1
 
             # stacktrace loop
             if args.print_stacktraces:
-                raise NotImplementedError
-            
-        # Write results
-        finally:
+                raise NotImplementedError                
+        
+        # stores network data in dictionary
+        if args.blanket_run:
+            outputs[network] = network_data
+
+        # write all data to result.json / report.npy if single run
+        else:
+            network_data['example'] = network
             try:
                 os.makedirs(args.result)
             except OSError as ex:
@@ -368,9 +308,22 @@ def main():
                     print(ex)
                     return
             with open(os.path.join(args.result, 'result.json'), 'w') as out:
-                json.dump(data, out)
+                json.dump(network_data, out)
             if isinstance(output.contents, np.ndarray):
                 np.save(os.path.join(args.result, 'result.npy'), output.contents)
+            # close
+            sys.exit(exit_status)
+
+    # write all data to report.json if blanket run
+    if args.blanket_run:
+        try:
+            os.makedirs(args.result)
+        except OSError as ex:
+            if ex.errno != errno.EEXIST:
+                print(ex)
+                return
+        with open(os.path.join(args.result, 'report.json'), 'w') as out:
+            json.dump(outputs, out)
 
     # close
     sys.exit(exit_status)
