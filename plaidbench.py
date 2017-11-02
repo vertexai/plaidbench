@@ -115,9 +115,6 @@ def inference(network, model, batch_size, compile_stop_watch, output, x_train, e
     for i in range(32//batch_size + 1):
         y = model.predict(x=x_train, batch_size=batch_size)
 
-    # Now start the clock and run 100 batches
-    print('Doing the main timing')
-
     for i in range(examples//batch_size):
         stop_watch.start()
         y = model.predict(x=x_train, batch_size=batch_size)
@@ -180,7 +177,7 @@ def main():
     parser.add_argument('-v', '--verbose', type=int, nargs='?', const=3)
     parser.add_argument('--result', default='/tmp/plaidbench_results')
     parser.add_argument('--callgrind', action='store_true')
-    parser.add_argument('-n', '--examples', type=int, default=1024)
+    parser.add_argument('-n', '--examples', type=int, default=None)
     parser.add_argument('--epochs', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--train', action='store_true')
@@ -200,10 +197,16 @@ def main():
         from keras.backend.common import set_floatx
         set_floatx('float16')
 
-    # variable declaration/intialization
+    examples = -1
+    if args.examples == None:
+        if args.blanket_run:
+            examples = 256
+        else:
+            examples = 1024
+    else:
+        examples = args.examples
     batch_size = int(args.batch_size)
     epochs = args.epochs
-    examples = args.examples
     epoch_size = examples // epochs
     networks = []
     output = Output()
@@ -218,9 +221,6 @@ def main():
         outputs = {}
         networks = list(SUPPORTED_NETWORKS)
 
-        print("Plaid Blanket Run: setting examples size to 256 for speed")
-        examples = 256;
-
         if args.plaid or (not args.no_plaid and has_plaid()):
             import plaidml
             data['plaid'] = plaidml.__version__
@@ -233,7 +233,6 @@ def main():
     else:
         networks.append(args.module)
 
-    
     for network in networks:
         print("\nCurrent network being run : " + network)  
         args.module = network
@@ -258,7 +257,7 @@ def main():
             if args.train:
                 value_check(examples, epochs, batch_size)
                 train(x_train, y_train, epoch_size, model, batch_size, compile_stop_watch, epochs, stop_watch, output)
-             inference run
+            # inference run
             else:
                 inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
 
