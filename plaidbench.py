@@ -227,6 +227,7 @@ def main():
         else:
             data['plaid'] = None
 
+        data['example_size'] = examples
         data['train'] = args.train
         data['blanket_run'] = True
         outputs['run_configuration'] = data.copy()
@@ -252,7 +253,7 @@ def main():
 
             # Prep the model and run an initial un-timed batch
             run_intial(batch_size, compile_stop_watch, args.module, model)
-
+            
             # training run
             if args.train:
                 value_check(examples, epochs, batch_size)
@@ -260,7 +261,7 @@ def main():
             # inference run
             else:
                 inference(args.module, model, batch_size, compile_stop_watch, output, x_train, examples, stop_watch)
-
+            
             # Stop stopwatches
             stop_watch.stop()
             compile_stop_watch.stop()
@@ -270,6 +271,9 @@ def main():
             compile_duration = compile_stop_watch.elapsed()
             
             # Record data
+            if args.blanket_run:
+                network_data['average_example_duration'] = execution_duration/examples
+
             network_data['execution_duration'] = execution_duration
             network_data['compile_duration'] = compile_duration
             network_data['precision'] = output.precision
