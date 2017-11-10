@@ -117,12 +117,12 @@ def main():
     epoch_size = examples // epochs
 
     if epochs > examples:
-    	raise ValueError('The number of epochs must be less than the number of examples.')
+        raise ValueError('The number of epochs must be less than the number of examples.')
     if batch_size > epoch_size:
         raise ValueError('The number of examples per epoch must be less than the batch size.')
-    if examples%epochs != 0:
+    if examples % epochs != 0:
         raise ValueError('The number of examples must be divisible by the number of epochs.')
-    if epoch_size%batch_size != 0:
+    if epoch_size % batch_size != 0:
         raise ValueError('The number of examples per epoch is not divisble by the batch size.')
 
     if args.train:
@@ -190,7 +190,7 @@ def main():
             compile_stop_watch.stop()
             output.contents = y
             print('Warmup')
- 
+
             for i in range(32 // batch_size + 1):
                 y = model.predict(x=x_train, batch_size=batch_size)
             # Now start the clock and run 100 batches
@@ -230,6 +230,7 @@ def main():
         if isinstance(output.contents, np.ndarray):
             np.save(os.path.join(args.result, 'result.npy'), output.contents)
     sys.exit(exit_status)
+
 
 if __name__ == '__main__':
     main()
