@@ -409,20 +409,10 @@ def generate_plot(df, title_str):
         title = time.strftime("plaidbench %Y-%m-%d-%H:%M.png")
     print("\nsaving figure '" + title + "'")
     fig.savefig(title)
-    #fig.savefig("example4.0.png")
 
 
 # Original networks
-#SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
-
-# networks asus-laptop can run-ish
-SUPPORTED_NETWORKS = ['mobilenet', 'inception_v3', 'xception']
-
-# networks asus-laptop can run-ish
-#SUPPORTED_NETWORKS = ['mobilenet', 'xception']
-
-# fast run
-#SUPPORTED_NETWORKS = ['mobilenet']
+SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
     exit_status = 0
@@ -498,17 +488,7 @@ def main():
         data = {}
         outputs = {}
         networks = list(SUPPORTED_NETWORKS)
-        # Original batchs to run with blanket
-        #batch_list = [1, 4, 8, 16]
-       
-        # Batches that the asus-laptop runs easily
-        batch_list = [1, 2, 4]
-
-        # Another batch list
-        #batch_list = [1, 2]
-
-        # fast run
-        #batch_list = [1]
+        batch_list = [1, 4, 8, 16]
 
         if args.plaid or (not args.no_plaid and has_plaid()):
             import plaidml
