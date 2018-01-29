@@ -1,3 +1,4 @@
 h5py>=2.7.0
 plaidml-keras>=0.1.0a5
 seaborn>=0.8.1
+asq
