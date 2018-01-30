@@ -81,42 +81,41 @@ def printf(*args, **kwargs):
     sys.stdout.flush()
 
 
-def getColor(h, s, v):
-    h_i = int(h * 6)
-    f = h * 6 - h_i
-    p = v * (1 - s)
-    q = v * (1 - f * s)
-    t = v * (1 - (1 - f) * s)
+def getColor(hue, satur, val):
+    hue_i = int(hue * 6)
     r = -1
     g = -1
     b = -1
+    f = hue * 6 - hue_i
+    p = val * (1 - satur)
+    q = val * (1 - f * satur)
+    t = val * (1 - (1 - f) * satur)
 
-    if (0 <= h_i and h_i < 1):
-        r = v 
+    if (0 <= hue_i and hue_i < 1):
+        r = val 
         g = t 
         b = p 
-    elif (1 <= h_i and h_i < 2):
+    elif (1 <= hue_i and hue_i < 2):
         r = q
-        g = v 
+        g = val 
         b = p 
-    elif (2 <= h_i and h_i < 3):
+    elif (2 <= hue_i and hue_i < 3):
         r = p 
-        g = v 
+        g = val 
         b = t 
-    elif (3 <= h_i and h_i < 4):
+    elif (3 <= hue_i and hue_i < 4):
         r = p 
         g = q 
-        b = v 
-    elif (4 <= h_i and h_i < 5):
+        b = val 
+    elif (4 <= hue_i and hue_i < 5):
         r = t 
         g = p 
-        b = v 
+        b = val 
     else:
-        r = v 
+        r = val 
         g = p 
         b = q 
 
-    import math
     r = int(r * 256)
     g = int(g * 256)
     b = int(b * 256)
@@ -252,7 +251,7 @@ def run_initial(batch_size, compile_stop_watch, network, model):
                   metrics=['accuracy'])
 
 
-def plot_v3(data, column, column_order, ymax):
+def plot(data, column, column_order, ymax):
     g = sns.FacetGrid(
         data,
         col=column,
@@ -269,18 +268,16 @@ def plot_v3(data, column, column_order, ymax):
         order = list(set(data['batch'])).sort()
     )
 
+    if ymax == 0:
+        ymax = 1
+    else:
+        plt.yticks(np.arange(0, ymax + (ymax * .1), ymax/10))
+
     axes = np.array(g.axes.flat)
     #hue_start = random.random()
     for ax in axes:
         #ax.hlines(.0003, -0.5, 0.5, linestyle='--', linewidth=1, color=getColor(hue_start, .6, .9))
         ax.set_ylim(0, ymax)
-
-    if ymax == 0:
-        print('isZero')
-        ymax = 1
-        #plt.yticks(np.arange(0, ymax + (ymax * .1), ymax/10))
-    else:
-        plt.yticks(np.arange(0, ymax + (ymax * .1), ymax/10))
 
     return plt.gcf(), axes
 
@@ -315,7 +312,6 @@ def set_labels(fig, axes, labels, batch_list, model_count):
         ax.set_xticklabels(batch_list)
 
         ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-        #ax.grid(b=True, which='minor')
         ax.grid(b=True, which='both', linewidth=.6)
         
         ax.set_xlabel(labels[i])
@@ -397,7 +393,7 @@ def generate_plot(df, title_str):
             palette.append(color)
             gradient = gradient + gradient_step
 
-    fig, axes = plot_v3(df, "model", col_order, max_time)
+    fig, axes = plot(df, "model", col_order, max_time)
     labels = (list(set(df['model'])))
     set_labels(fig, axes, labels, list(set(df['batch'])), len(labels))
     color_bars(axes, palette, len(df['model']), len(list(set(df['batch']))))
@@ -411,7 +407,6 @@ def generate_plot(df, title_str):
     fig.savefig(title)
 
 
-# Original networks
 SUPPORTED_NETWORKS = ['inception_v3', 'mobilenet', 'resnet50', 'vgg16', 'vgg19', 'xception']
 
 def main():
@@ -531,7 +526,7 @@ def main():
                     # inference run
                     inference(args.module, model, batch_size, compile_stop_watch, 
                               output, x_train, examples, stop_watch)
-
+                
                 # Record stopwatch times
                 execution_duration = stop_watch.elapsed()
                 compile_duration = compile_stop_watch.elapsed()
