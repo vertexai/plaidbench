@@ -36,10 +36,6 @@ Run a training benchmark for VGG16 using TensorFlow_::
   python plaidbench.py --no-plaid --train vgg16
 
 
-.. autoprogram:: plaidbench:make_parser()
-   :prog: Options
-   :strip_usage:
-
 
 Usage
 =====
