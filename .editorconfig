@@ -8,3 +8,7 @@ tab_width=8
 [*.sh]
 indent_size=4
 
+[*.rst]
+indent_size=3
+indent_style=space
+

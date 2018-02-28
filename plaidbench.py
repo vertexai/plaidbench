@@ -229,26 +229,39 @@ def check_correctness(base_output, cur_output, precision):
 
     return (correct, max_error, max_abs_error, fail_ratio)
 
+def make_parser():
+    parser = argparse.ArgumentParser()
+    plaidargs = parser.add_mutually_exclusive_group()
+    plaidargs.add_argument('--plaid', action='store_true',
+        help="Use PlaidML as the Keras backend.")
+    plaidargs.add_argument('--no-plaid', action='store_true',
+        help="Use TensorFlow as the Keras backend instead of PlaidML.")
+    parser.add_argument('--fp16', action='store_true',
+        help="Use half-precision floats, setting floatx='float16'.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+        help="Logging verbosity level (0..4).")
+    parser.add_argument('--result', default='/tmp/plaidbench_results',
+        help="Destination directory for results output.")
+    parser.add_argument('--callgrind', action='store_true',
+        help="Invoke callgrind during timing runs.")
+    parser.add_argument('-n', '--examples', type=int, default=None,
+        help="Number of examples to use.")
+    parser.add_argument('--epochs', type=int, default=2,
+        help="Number of epochs per test.")
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--train', action='store_true',
+        help="Measure training performance instead of inference.")
+    parser.add_argument('--blanket-run', action='store_true', help=
+        "Run all networks at a range of batch sizes, ignoring the "
+        "--batch-size and --examples options and the choice of network.")
+    parser.add_argument('--print-stacktraces', action='store_true',
+        help="Print a stack trace if an exception occurs.")
+    parser.add_argument('module', choices=SUPPORTED_NETWORKS, metavar='network')
+    return parser
 
 def main():
     exit_status = 0
-    parser = argparse.ArgumentParser()
-    plaidargs = parser.add_mutually_exclusive_group()
-    plaidargs.add_argument('--plaid', action='store_true')
-    plaidargs.add_argument('--no-plaid', action='store_true')
-    parser.add_argument('--fp16', action='store_true')
-    parser.add_argument('-v', '--verbose', action='count', default=0)
-    parser.add_argument('--result', default='/tmp/plaidbench_results')
-    parser.add_argument('--callgrind', action='store_true')
-    parser.add_argument('-n', '--examples', type=int, default=None)
-    parser.add_argument('--epochs', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--train', action='store_true')
-    parser.add_argument('--blanket-run', action='store_true')
-    parser.add_argument('--print-stacktraces', action='store_true')
-    args1 = parser.parse_known_args()
-    if args1[0].blanket_run == False:
-        parser.add_argument('module', choices=SUPPORTED_NETWORKS)
+    parser = make_parser()
     args = parser.parse_args()
 
     # Plaid, fp16, and verbosity setup
