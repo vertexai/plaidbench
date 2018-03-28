@@ -71,9 +71,8 @@ def download_onnx_data(model, filename, use_cached_data=True):
                     break
                 hash.update(data)
             if hash.hexdigest() != expected_sha256[model]:
-                raise RuntimeError(
-                    "Invalid checksum on downloaded file from {}; got {}, expected {}".format(
-                        url, hash.hexdigest(), expected_sha256[model]))
+                click.echo('Warning: unexpected checksum on file {}: {}'.format(
+                    compressed_file, hash.hexdigest()))
         click.echo('Done')
         click.echo('Extracting {}...'.format(compressed_file), nl=False)
         try:
