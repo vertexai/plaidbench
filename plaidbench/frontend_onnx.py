@@ -98,8 +98,9 @@ class Model(core.Model):
 
     def setup(self):
         try:
+            print("Installing {0}".format(self.frontend.backend_info.module_name))
             self.backend = importlib.import_module(self.frontend.backend_info.module_name)
-        except ModuleNotFoundError:
+        except ImportError:
             raise core.ExtrasNeeded(self.frontend.backend_info.requirements)
         try:
             data_path = download_onnx_data(self.params.network_name, 'test_data_0.npz',
