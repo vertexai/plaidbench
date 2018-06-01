@@ -32,10 +32,9 @@ class GoldenOutputNotAvailableError(Exception):
 
 class ExtrasNeeded(click.ClickException):
 
-    def __init__(self, extras):
-        super(ExtrasNeeded, self).__init__(
-            'Missing needed packages for benchmark; to fix, pip install {}'.format(
-                ' '.join(extras)))
+    def __init__(self, extras, base):
+        super(ExtrasNeeded, self).__init__('Unable to load modules from package(s): {}\n{}'.format(
+            ' '.join(extras), str(base)))
         self.extras = extras
 
 

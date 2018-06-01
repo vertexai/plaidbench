@@ -36,8 +36,7 @@ before_script:
   - $PYTHON setup.py install
 
 script:
-  - plaidbench keras mobilenet
-  - plaidbench onnx squeezenet
+  - $PYTHON setup.py test
 
 cache:
   - pip

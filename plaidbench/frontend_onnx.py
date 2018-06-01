@@ -16,13 +16,13 @@ from collections import namedtuple
 import hashlib
 import importlib
 import os
-import six
 import sys
 import tarfile
 
 import click
 import numpy as np
 import plaidml
+import six
 from six.moves.urllib.request import urlretrieve
 
 from plaidbench import core
@@ -99,8 +99,8 @@ class Model(core.Model):
     def setup(self):
         try:
             self.backend = importlib.import_module(self.frontend.backend_info.module_name)
-        except ImportError:
-            raise core.ExtrasNeeded(self.frontend.backend_info.requirements)
+        except ImportError as e:
+            six.raise_from(core.ExtrasNeeded(self.frontend.backend_info.requirements, e), e)
         try:
             data_path = download_onnx_data(self.params.network_name, 'test_data_0.npz',
                                            self.frontend.use_cached_data)
@@ -203,8 +203,8 @@ def cli(ctx, backend, cpu, use_cached_data, networks):
     runner = ctx.ensure_object(core.Runner)
     try:
         importlib.import_module(backend.module_name)
-    except ImportError:
-        six.raise_from(core.ExtrasNeeded(backend.requirements), None)
+    except ImportError as e:
+        six.raise_from(core.ExtrasNeeded(backend.requirements, e), e)
     if backend.is_plaidml:
         runner.reporter.configuration['plaid'] = plaidml.__version__
 

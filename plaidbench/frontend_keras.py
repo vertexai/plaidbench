@@ -19,6 +19,7 @@ import click
 import numpy as np
 
 import plaidml
+import six
 
 from plaidbench import core
 
@@ -225,13 +226,13 @@ def cli(ctx, backend, fp16, train, networks):
         try:
             runner.reporter.configuration['plaid'] = importlib.import_module('plaidml').__version__
             importlib.import_module('plaidml.keras').install_backend()
-        except ImportError:
-            raise core.ExtrasNeeded(['plaidml-keras'])
+        except ImportError as e:
+            six.raise_from(core.ExtrasNeeded(['plaidml-keras'], e), e)
     elif backend == 'tensorflow':
         try:
             importlib.import_module('keras.backend')
-        except ImportError:
-            raise core.ExtrasNeeded(['keras', 'tensorflow'])
+        except ImportError as e:
+            six.raise_from(core.ExtrasNeeded(['keras', 'tensorflow'], e), e)
 
     if fp16:
         importlib.import_module('keras.backend').set_floatx('float16')
