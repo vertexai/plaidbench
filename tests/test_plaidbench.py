@@ -13,4 +13,5 @@ import plaidbench.cli
 def test_plaidbench(args):
     runner = CliRunner()
     result = runner.invoke(plaidbench.cli.plaidbench, args)
+    print('plaidbench {}:\n{}'.format(' '.join(args), result.output))
     assert result.exit_code == 0
