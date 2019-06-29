@@ -44,7 +44,7 @@ Plaidbench provides a simple command-line interface; global flags are provided i
 
 For example, to benchmark [ShuffleNet](https://arxiv.org/abs/1707.01083) on [ONNX](https://onnx.ai/) using PlaidML, writing results to the directory `~/shuffle_results`, you can run:
 
-    plaidbench --result ~/shuffle_results onnx --plaid shufflenet
+    plaidbench --results ~/shuffle_results onnx --plaid shufflenet
 
 For a complete overview of the supported global flags, use `plaidbench --help`; for the individual subcommand flags, specify `--help` with the subcommand (e.g. `plaidbench keras --help`).
 
